@@ -1,0 +1,142 @@
+Design: Arith
+
+- Modules
+Arith/
+   readme.txt
+   array2/
+      Cargo.toml
+      src/
+         array2.rs
+         lib.rs
+   bitpack/
+      Cargo.toml
+      src/
+         bitpack.rs
+         lib.rs
+   rpeg/
+      Cargo.toml
+      src/
+         codec.rs
+         lib.rs
+	 args.rs
+         main.rs
+	 de_comp/
+	    lib.rs
+	    un_pack.rs
+	    avg_dct/
+	       lib.rs
+	       avg_dct.rs
+	       un_block/
+		  lib.rs
+		  un_block.rs
+	       	  cv_rgb/
+	             lib.rs
+		     cv_rgb.rs
+
+- Interfaces and tests
+Compression -- cv_rgb.rs
+// trim a column or row if they are not even
+pub fn make_even(image: &mut RgbImage) -> (usize, usize){
+    todo!()
+}
+// for every pixel convert from rgb integer to rgb float (r, g, b) then to component video (c, pb, pr)
+pub fn cv(image: &mut RgbImage) -> array2<(f32, f32, f32)> {
+    let w_h = make_even(image);
+    todo!()
+}
+Decompression -- cv_rgb.rs
+// for every pixel convert back from component video (c, pb, pr) to rgb float then rgb ints u16 (r, g, b) then to an rgb image
+pub fn rgb (arr2: Array2<(f32, f32, f32)>) -> RgbImage {
+    todo!()
+}
+* test 1 | rpeg/lib.rs
+We test this module by partially compressing and decompressing an original image with cv_rgb functions to get a transformed image. 
+Using ppmdiff from the lab we compare the original image with the transformed one and we make sure that the root mean square difference is close enough to 0.0 
+(from my implementation I have a rms of 0.0025  on this step)
+---
+Compression -- un_block.rs
+// takes an array 2, makes 2 by 2 blocks with it and returns an array 2 of blocks with each block a vector of elements 
+pub fn make_blocks(arr2: &mut Array2<(f32, f32, f32)>) -> Array2<Vec<(f32, f32, f32)>>{
+    todo!()
+}
+Decompression -- un_block.rs
+// takes a array 2 of 2 by 2 blocks with each block being a vector and expands it back into an original array 2
+pub fn undo_blocks(blocked_arr2: &mut Array2<Vec<(f32, f32, f32)>>) -> Array2<(f32, f32, f32)>{
+    todo!()
+}
+* test 2 | rpeg/lib.rs
+We test this module by partially compressing and decompressing  an original image with un_block.rs functions to get a transformed image.
+Using ppmdiff from the lab we compare the original image with the transformed one and we make sure that the root mean square difference is identical to the one we had from test 1.
+(from my implementation I do obtain the same rms of 0.25) 
+I have also tested my function with random array2 with even rows and columns and printing the outputs of my function to standard output.
+
+---
+Compression -- av_dct.rs
+// this function uses the un_block.rs make_blocks convert y1, y2, y3, y4, their pb and pr average into ((a, b, c, d), pb, pr) that it returns quantized using csc411_arith
+pub fn av_dct (arr2: &mut Array2<(f32, f32, f32)>) -> Array2<((f32, f32, f32, f32), usize, usize)>{
+    todo!()
+}
+Decompression -- av-dct.rs
+// this function takes an array2 of tuples ((a, b, c, d), pb, pr), converts each tuple int ((y1, y2, y3, y4), pb, pr),from each of these tuples makes a block vector of 4 tuples (yi, pb, pr), uses the un_block function and returns an array2 of tuples (y, pb, pr)  
+pub fn inv_dct(arr2: Array2<((f32, f32, f32, f32), usize, usize)>) -> Array2<(f32, f32, f32)> { 
+    todo!()
+}
+* test 3 | rpeg/lib.rs
+We test these modules by partially compressing an original image with avg_dct.rs then partially decompressing the image with inv_dct.rs to get a transformed image.
+Using ppmdiff from the lab we compare the original image with the transformed one and we make sure that the root mean square difference is close enough to 0.0 but with a higher value than the test 1
+---
+
+* Bitpack testing | bitpack/src/lib.rs
+Using multiple assert! (), we can test each function contained in bitpack one by one progressively while implementing them.
+We test whether a signed/unsigned value fits into a width or bits using values we know should fit or shouldn't fit
+We test by adding a value into a x bit word and try to retrieve the value. making sure the retreived corresponds to the orginal.
+We can use roundtrip testing as well on newu and getu functions as well as news and gets functions.
+
+---
+Compression -- un_pack.rs
+// this funciton uses bitpack functions to pack each tuple ((a,b,c,d), pb, pr)) into a 32 bit word, writes an rpeg using csc_411_rpegio
+pub fn pack (arr2: Array2<((a, b, c, d) pb, pr)>) -> rpeg?? {
+}
+Decompression -- un_pack.rs
+// this function unpack a 32 bit word into a tuple ((a,b,c,d), pb, pr) from a rpeg file 
+pub fn unpack (filename?) -> Array2<((a, b, c, d), pb, pr)> {
+}
+
+* test 4 | rpeg/lib.rs
+We test these modules by partially compressing and decompressing an original image with un_pack.rs then partially decompressing the image with unpack.rs to get a transformed image.
+Using ppmdiff from the lab we compare the original image with the transformed one and we make sure that the root mean square difference is close enough to 0.0 but with a higher value than the test 3
+---
+Compression -- codec.rs
+// this function takes a file name and compress the image using all the previous functions mentioned above
+pub fn compress(filename: &str) {
+    todo!();
+}
+Decompression -- codec.rs
+// this function takes a file name and decompress the image using all the previous function mentioned above
+pub fn decompress(filename: &str) {
+    todo!();
+}
+* test 4 |  rpeg/lib.rs
+We do a final test of these 2 functions fully implemented, while making sure the outputs are printed how we want it using the csc_411_rpegio for compression and csc_411_image for decompression. We confirm with ppmdiff that we obtain the same rms than from test 4.
+
+We will have a module called args.rs with a Args struct for clap. In main.rs we will use match in order to handle the user input -c or -d for compress and decompress respectively. main.rs uses codec.rs functions compress / decompress to either compress or decompress a file. 
+
+- Testing plan 
+With roundtrip testing we can test each steps of compression along with decompression progressively while implementing them. By doing so we can make sure each step work before doing the next step, making it easier for us to locate bugs if there is any and fix it before moving on to the next. Instead of implementing the whole compression and the whole decompression before testing.
+There is no complexity with no simplicity, it is all about levels of abstraction and perspectives. By doing well each of the simple steps, complexity progressively turns into simplicity.
+
+- Loss of information
+When compressing an image, information is lost. There are multiple sources:
+	trimming the image
+	conversion of rgb from integer to float
+	conversion from rgb to component video
+	the average of pr and pb
+	the discrete cosine transformation
+	the quantification from float to usize
+	bipack of the information
+	then we output the file
+The information lost can NOT be recovered while decompressing the image. Decompression only expands the information present in the compressed image to a certain extent.
+The more an image gets compressed and decompressed the more information gets lost. The information loss due to compression and decompression is cummulative.
+
+Yann Y | professor Dr. Daniels
+University of Rhode Island
